@@ -1,6 +1,6 @@
 ## gopipeline
 
-This is a zero-dependency library that allows for the setup and execution of concurrent multi-step pipelines. The pipeline may operate over a single input stream, or pipelines running over multiple streams can be coordinated to run concurrently.
+This is an ultra-lite library that allows for the setup and execution of concurrent multi-step pipelines. The pipeline may operate over a single input stream, or pipelines running over multiple streams can be coordinated to run concurrently.
 
 ## Installation
 
