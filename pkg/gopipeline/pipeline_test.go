@@ -64,7 +64,6 @@ func TestMultiplePipelines(t *testing.T) {
 	)
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
 	pipeline1.RegisterWaitGroups(&wg)
 	pipeline2.RegisterWaitGroups(&wg)
 

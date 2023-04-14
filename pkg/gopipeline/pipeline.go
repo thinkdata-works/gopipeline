@@ -35,6 +35,8 @@ type Pipeline[I any] interface {
 
 	/*
 		Register one or more waitgroups. After `Work()` returns, it will call `.Done()` on each waitgroup on order, whether it completes execution or not. This will allow the pipeline to be called asynchronously
+
+		At registration, `wg.Add(1)` will be called for each group given
 	*/
 	RegisterWaitGroups(...*sync.WaitGroup)
 
@@ -82,7 +84,10 @@ func (p *pipeline[I]) RegisterErrorHandler(handler func(error) bool) {
 }
 
 func (p *pipeline[I]) RegisterWaitGroups(groups ...*sync.WaitGroup) {
-	p.listeningwgs = append(p.listeningwgs, groups...)
+	for _, g := range groups {
+		g.Add(1)
+		p.listeningwgs = append(p.listeningwgs, g)
+	}
 }
 
 func (p *pipeline[I]) Work(ctx context.Context) error {
