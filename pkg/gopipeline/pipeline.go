@@ -102,6 +102,10 @@ func (p *pipeline[I]) Work(ctx context.Context) error {
 		return fmt.Errorf("must register input provider")
 	}
 
+	if len(p.steps) < 1 {
+		return fmt.Errorf("must register at least one step")
+	}
+
 	// Create the channel that inputs will be passed to
 	p.inputStream = make(chan I, p.bufferSize)
 
@@ -131,11 +135,6 @@ func newExecutor[I any](pipeline *pipeline[I]) *executor[I] {
 }
 
 func (e *executor[I]) setup(ctx context.Context) error {
-	if len(e.pipeline.steps) < 1 {
-		// Return an error - no executor will work
-		return fmt.Errorf("must register at least one step")
-	}
-
 	// Create two channels holders that will be our upstream and downstream channels
 	var upstreamChan, downstreamChan chan I
 	for i, step := range e.pipeline.steps {
