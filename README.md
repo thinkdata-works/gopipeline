@@ -1,7 +1,3 @@
-<<<<<<< Updated upstream
-# gopipeline
-Scalable concurrent go pipeline for running multi-step async processes
-=======
 ## gopipeline
 
 gopipeline provides a framework for running multi-step pipelines over a stream of items that need processing. It was primarly designed for cases where pipeline steps may take an non-trivial amount time to complete, since they may be doing something like waiting for disk IO or making some external request. The pipeline can be configured to run multiple replicas over the input stream to maximize taking advantage of compute resources.
@@ -96,4 +92,3 @@ $ go test -v ./pkg/gopipeline
 ## License
 
 `gopipeline` is licensed under the Apache 2.0 License, found in the LICENSE file.
->>>>>>> Stashed changes
