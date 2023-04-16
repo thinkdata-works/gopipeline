@@ -23,65 +23,85 @@ $ go get github.com/thinkdata-works/gopipeline
 
 ## Quickstart
 
-Simple example
+This fictional example uses a local resource which interacts with some external services
 
 ```
 package main
 
 import (
-  "github.com/thinkdata-works/gopipeline"
+	"context"
+
+	"github.com/thinkdata-works/gopipeline/pkg/gopipeline"
 )
 
 type resource struct {
-  id string
-  strval string
-  intval string
-  timeval time.Time
+	id           string
+	signature    string
+	external_url string
 }
 
-type pipelineItem struct {
-  r *resource
+func process1(ctx context.Context, resources []resource) []error {
+	errs := []error{}
+
+	// Define the new pipeline with concurrency count and size
+	pipeline := gopipeline.NewPipeline[*resource](5, 100)
+
+	// Register our function that will feed values to the top of the pipeline
+	pipeline.RegisterInputProvider(func(ctx context.Context, c chan *resource) {
+		defer close(c)
+		for _, r := range resources {
+			c <- &r
+		}
+	})
+
+	// Register our error handler
+	pipeline.RegisterErrorHandler(func(err error) bool {
+		errs = append(errs, err)
+		return true // return false for non-halting
+	})
+
+	// Compose our steps
+	pipeline.RegisterSteps(
+		getNewExternalUrl, reSignResource, applyChanges, notifyDownstream,
+	)
+
+	err := pipeline.Work(ctx)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	return errs
 }
 
-func process(ctx context.Context, resources []resource) []error {
-  // Define the new pipeline with concurrency count and size
-  pipeline := gopipeline.NewPipeline[pipelineItem](5, 100)
-
-  // Register our function that will feed values to the top of the pipeline
-  pipeline.RegisterInputProvider(func(ctx context.Context, c chan pipelineItem) {
-    defer close(c)
-    for _, r := range resources {
-      c <- r
-    }
-  })
-
-  // Register our error handler
-  pipeline.RegisterErrorHandler(func(err error) bool {
-    errs = append(errs, err)
-    return false // return true if you want errors to halt the pipeline
-  })
-
-  // TODO - create dummy function definitions
-  pipeline.RegisterSteps(
-    normalizeInput, updateTimestamp, applyChanges, notifyDownstream,
-  )
-
-  err := pipeline.Work(ctx)
-  if err != nil {
-    errs = append(errs, err)
-  }
-
-  return errs
+func getNewExternalUrl(ctx context.Context, r *resource) (*resource, error) {
+	// Dispatch external request
+	r.external_url = external_services.GetNewUrl(r.id)
+	return r, nil
 }
+
+func reSignResource(ctx context.Context, r *resource) (*resource, error) {
+	// Dispatch request to create new signature
+	r.signature = external_services.SignUrl(r.id, r.external_url)
+	return r, nil
+}
+
+func applyChanges(ctx context.Context, r *resource) (*resource, error) {
+	// Apply changes to some kind of storage
+	err := storage.ApplyResourceChanges(r.id, r.signature, r.external_url)
+	if err != nil {
+		return r, err
+	}
+	return r, nil
+}
+
+func notifyDownstream(ctx context.Context, r *resource) (*resource, error) {
+	external_services.NotifyListeners(r.id, r.signature, r.external_url)
+	return r, nil
+}
+
 ```
 
-Concurrent example
-
-```
-// TODO - give small example on using concurrency primitives
-```
-
-Also `pipeline_test.go` for additional working examples
+Also see `pipeline_test.go` for additional working examples, as well as examples for running multiple pipelines concurrently.
 
 ## Running tests
 
