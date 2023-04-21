@@ -16,7 +16,6 @@ $ go get github.com/thinkdata-works/gopipeline
 
 ## Features and configuration
 
-// TODO - remove testify! Just use native go testing so that we can say this has no dependencies
 - Dynamic step definition - supply one or more pure go functions to define your pipeline work
 - Custom error handler - register a pure go function to handle errors and toggle between halting and non-halting behaviours
 - Wait group handling - Register the pipeline with one or more other waitgroups to build this into other asynchronous processes
