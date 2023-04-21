@@ -1,0 +1,9 @@
+.vscode
+debug.test
+testenv/
+cover.out
+coverage.out
+cover.html
+go.work
+cpu.out
+*.test
