@@ -27,7 +27,9 @@ type Pipeline[I any] interface {
 	/*
 		Register a function that will receive errors returned from any of the pipeline steps.
 
-		If the handler returns `true` then execution of the next pipeline step will continue. If it returns false, or if the error handler is not defined, then pipeline will cease execution for the current item
+		If the handler returns `true` then execution of the next pipeline step will continue. If it returns false, or if the error handler is not defined, then pipeline will cease execution for the current item.
+
+		Invoking the error handler users a mutex, so any action it takes will be threadsafe.
 
 		Subsequent calls with replace the error handler
 	*/
@@ -55,6 +57,7 @@ type pipeline[I any] struct {
 	inputStream   chan I
 	inputProvider func(context.Context, chan I)
 	errorHandler  func(error) bool
+	errorMtx      *sync.Mutex
 	listeningwgs  []*sync.WaitGroup
 
 	// internals
@@ -66,6 +69,7 @@ func NewPipeline[I any](concurrencyLevel, bufferSize int) Pipeline[I] {
 		concurrencyLevel: concurrencyLevel,
 		bufferSize:       bufferSize,
 		pipelineWg:       &sync.WaitGroup{},
+		errorMtx:         &sync.Mutex{},
 		listeningwgs:     []*sync.WaitGroup{},
 	}
 	return p
@@ -182,7 +186,7 @@ func (e *executor[I]) runStep(ctx context.Context, upstream, downstream chan I, 
 		if err != nil {
 			var shouldcontinue bool
 			if e.pipeline.errorHandler != nil {
-				shouldcontinue = e.pipeline.errorHandler(err)
+				shouldcontinue = e.handleError(err)
 			}
 
 			if shouldcontinue {
@@ -195,6 +199,12 @@ func (e *executor[I]) runStep(ctx context.Context, upstream, downstream chan I, 
 			downstream <- transformedItem
 		}
 	}
+}
+
+func (e *executor[I]) handleError(err error) bool {
+	e.pipeline.errorMtx.Lock()
+	defer e.pipeline.errorMtx.Unlock()
+	return e.pipeline.errorHandler(err)
 }
 
 // Kick off the executor by sending items from the input stream
