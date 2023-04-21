@@ -1,4 +1,4 @@
-# Contributing to Sif
+# Contributing to Gopipeline
 
 ## Rules
 
