@@ -117,10 +117,7 @@ func (p *pipeline[I]) Work(ctx context.Context) error {
 	for w := 1; w <= p.concurrencyLevel; w++ {
 		// Create an executor for the pipeline, with the step of steps that it will do
 		e := newExecutor(p)
-		err := e.setup(ctx)
-		if err != nil {
-			return err
-		}
+		e.setup(ctx)
 		go e.work(ctx)
 	}
 
@@ -138,7 +135,7 @@ func newExecutor[I any](pipeline *pipeline[I]) *executor[I] {
 	return &executor[I]{pipeline: pipeline}
 }
 
-func (e *executor[I]) setup(ctx context.Context) error {
+func (e *executor[I]) setup(ctx context.Context) {
 	// Create two channels holders that will be our upstream and downstream channels
 	var upstreamChan, downstreamChan chan I
 	for i, step := range e.pipeline.steps {
@@ -168,8 +165,6 @@ func (e *executor[I]) setup(ctx context.Context) error {
 		// Run the step with our channels
 		go e.runStep(ctx, upstreamChan, downstreamChan, step)
 	}
-
-	return nil
 }
 
 func (e *executor[I]) runStep(ctx context.Context, upstream, downstream chan I, step func(context.Context, I) (I, error)) {
