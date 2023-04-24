@@ -24,7 +24,7 @@ $ go get github.com/thinkdata-works/gopipeline
 
 This fictional example uses a local resource which interacts with some external services
 
-```
+```go
 package main
 
 import (
