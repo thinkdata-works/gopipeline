@@ -1,3 +1,5 @@
+![CI](https://github.com/thinkdata-works/gopipeline/actions/workflows/ci.yml/badge.svg)
+
 ## gopipeline
 
 This is an ultra-lite library that allows for the setup and execution of concurrent multi-step pipelines. The pipeline may operate over a single input stream, or pipelines running over multiple streams can be coordinated to run concurrently.
