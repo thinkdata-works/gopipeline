@@ -2,9 +2,9 @@
 
 ## gopipeline
 
-gopipeline provides a framework for running multi-step pipelines over a stream of items that need processing. It was primarly designed for cases where pipeline steps may take an non-trivial amount time to complete, since they may be doing something like waiting for disk IO or making some external request. The pipeline can be configured to run multiple replicas over the input stream to maximize taking advantage of compute resources.
+gopipeline provides a framework for running multi-step pipelines over a stream of items that need asynchronous processing. It was designed to allow pipeline steps to be long-running, since they may be I/O bound. The pipeline itself is configurable to run multiple copies to take advantage of compute resources.
 
-The pipeline can also be configured to be used as part of other async processes
+The pipeline can also be configured to be used as part of other async processes by registering it as a waitgroup member.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ $ go get github.com/thinkdata-works/gopipeline
 ## Features and configuration
 
 - Dynamic step definition - supply one or more pure go functions to define your pipeline work
-- Custom error handler - register a pure go function to handle errors and toggle between halting and non-halting behaviours
+- Custom error handler - register a function to handle errors and toggle between halting and non-halting behaviours
 - Wait group handling - Register the pipeline with one or more other waitgroups to build this into other asynchronous processes
 
 ## Quickstart
@@ -41,7 +41,7 @@ type resource struct {
 	external_url string
 }
 
-func process1(ctx context.Context, resources []resource) []error {
+func process(ctx context.Context, resources []resource) []error {
 	errs := []error{}
 
 	// Define the new pipeline with concurrency count and size
@@ -76,13 +76,21 @@ func process1(ctx context.Context, resources []resource) []error {
 
 func getNewExternalUrl(ctx context.Context, r *resource) (*resource, error) {
 	// Dispatch external request
-	r.external_url = external_services.GetNewUrl(r.id)
+	url, err := external_services.GetNewUrl(r.id)
+	if err != nil {
+		return r, err
+	}
+	r.external_url = url
 	return r, nil
 }
 
 func reSignResource(ctx context.Context, r *resource) (*resource, error) {
 	// Dispatch request to create new signature
-	r.signature = external_services.SignUrl(r.id, r.external_url)
+	signature, err := external_services.SignUrl(r.id, r.external_url)
+	if err != nil {
+		return r, err
+	}
+	r.signature = signature
 	return r, nil
 }
 
