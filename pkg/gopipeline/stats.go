@@ -6,7 +6,7 @@ import (
 )
 
 type stats struct {
-	mutex     *sync.Mutex
+	mutex     *sync.RWMutex
 	startedAt *time.Time
 
 	ticker   *time.Ticker
@@ -35,7 +35,7 @@ type Report struct {
 
 func newStatsTracker(interval time.Duration, reporter func(r Report)) *stats {
 	s := &stats{
-		mutex:    &sync.Mutex{},
+		mutex:    &sync.RWMutex{},
 		interval: interval,
 		reporter: reporter,
 	}
@@ -87,8 +87,8 @@ func (s *stats) report() {
 		return
 	}
 
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	s.reporter(Report{
 		ItemsPerSecond:  s.itemsPerSecond,
 		TotalFinished:   s.totalFinished,
