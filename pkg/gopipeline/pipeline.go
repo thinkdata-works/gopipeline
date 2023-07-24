@@ -45,6 +45,8 @@ type Pipeline[I any] interface {
 
 	/*
 		Register a time interival in which to run a stats reporter on the pipeline. Also register a function which will recieve the stats report. You may use this function for printing status of the pipeline or benchmarking
+
+		Subsequent calls will replace the reporter
 	*/
 	RegisterReporter(reportInterval time.Duration, reporter func(r Report))
 
