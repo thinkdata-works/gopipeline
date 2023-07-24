@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -131,6 +132,40 @@ func TestPipeline_ErrorHandler_Halting(t *testing.T) {
 	assert.NoError(t, err)
 
 	assertItemsWithStepTwoHaltingError(t, items)
+}
+
+func TestPipeline_Reporter(t *testing.T) {
+	pipeline := NewPipeline[*testItem](5, 20)
+
+	// create placeholder for test vals
+	items := make([]testItem, 1000)
+	pipeline.RegisterInputProvider(testPipelineProvider(&items))
+	pipeline.RegisterSteps(
+		stepOne, stepTwo, func(ctx context.Context, ti *testItem) (*testItem, error) {
+			time.Sleep(5 * time.Millisecond)
+			return ti, nil
+		}, stepThree,
+	)
+
+	var reportCalled int
+	previousTotal := int64(0)
+	pipeline.RegisterReporter(50*time.Millisecond, func(r Report) {
+		reportCalled++
+
+		// Numbers should be increasing
+		assert.Greater(t, r.TotalFinished, previousTotal)
+		previousTotal = r.TotalFinished
+
+		// Set minimum
+		assert.Greater(t, r.ItemsPerSecond, float64(50))
+
+		// No sensible assertions for TotalInPipeline
+	})
+	err := pipeline.Work(context.Background())
+	assert.NoError(t, err)
+
+	assertItems(t, items)
+	assert.GreaterOrEqual(t, reportCalled, 20)
 }
 
 func assertItems(t *testing.T, items []testItem) {

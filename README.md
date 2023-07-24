@@ -21,6 +21,7 @@ $ go get github.com/thinkdata-works/gopipeline
 - Dynamic step definition - supply one or more pure go functions to define your pipeline work
 - Custom error handler - register a function to handle errors and toggle between halting and non-halting behaviours
 - Wait group handling - Register the pipeline with one or more other waitgroups to build this into other asynchronous processes
+- Stats reporting - asynchronously track the process of the pipeline for progress or benchmarking
 
 ## Quickstart
 
@@ -31,7 +32,7 @@ package main
 
 import (
 	"context"
-
+	"time"
 	"github.com/thinkdata-works/gopipeline/pkg/gopipeline"
 )
 
@@ -64,6 +65,15 @@ func process(ctx context.Context, resources []resource) []error {
 	// Compose our steps
 	pipeline.RegisterSteps(
 		getNewExternalUrl, reSignResource, applyChanges, notifyDownstream,
+	)
+
+	pipeline.RegisterReporter(
+		5 * time.Second, func(r Report) {
+			fmt.Printf(
+			"\n\n=====Begin stats=====\nTotal items finished: %d\nTotal items in pipeline: %d\nAverage items per second: %.6f\n=====End stats=====\n\n",
+			r.TotalFinished, r.TotalInPipeline, r.ItemsPerSecond,
+			)
+		},
 	)
 
 	err := pipeline.Work(ctx)
