@@ -132,16 +132,8 @@ func (p *pipeline[I]) Work(ctx context.Context) error {
 		return fmt.Errorf("must register at least one step")
 	}
 
-	// If we are tracking stats, then we need to step up
 	if p.stats != nil {
-		registerfunc := func(ctx context.Context, i I) (I, error) {
-			p.stats.registerNewItem()
-			return i, nil
-		}
-		// Prepend a step to the beginning which will register each item
-		p.steps = append([]func(ctx context.Context, i I) (I, error){registerfunc}, p.steps...)
-
-		// Append a step to the end where the item is completed as long as it's not nil
+		// Append a step to the end where the item is completed
 		p.steps = append(p.steps, func(ctx context.Context, i I) (I, error) {
 			p.stats.registerItemComplete()
 			return i, nil
@@ -245,6 +237,10 @@ func (e *executor[I]) work(ctx context.Context) {
 	defer close(e.topChannel)
 
 	for item := range e.pipeline.inputStream {
+		// If we are collecting stats for the pipeline then register each new item
+		if e.pipeline.stats != nil {
+			e.pipeline.stats.registerNewItem()
+		}
 		e.topChannel <- item
 	}
 }
