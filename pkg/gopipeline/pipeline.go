@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 )
 
 type Pipeline[I any] interface {
@@ -43,7 +44,14 @@ type Pipeline[I any] interface {
 	RegisterWaitGroups(...*sync.WaitGroup)
 
 	/*
+		Register a time interival in which to run a stats reporter on the pipeline. Also register a function which will recieve the stats report. You may use this function for printing status of the pipeline or benchmarking
+	*/
+	RegisterReporter(reportInterval time.Duration, reporter func(r Report))
+
+	/*
 		Begins pipeline execution. Returns errors if they occur during setup
+
+		PLEASE NOTE that this function is not idempotent. Running the work function twice will not produce the same result. For subsequent runs, please create a new pipeline
 	*/
 	Work(ctx context.Context) error
 }
@@ -62,6 +70,9 @@ type pipeline[I any] struct {
 
 	// internals
 	pipelineWg *sync.WaitGroup
+
+	// stats
+	stats *stats
 }
 
 func NewPipeline[I any](concurrencyLevel, bufferSize int) Pipeline[I] {
@@ -94,7 +105,18 @@ func (p *pipeline[I]) RegisterWaitGroups(groups ...*sync.WaitGroup) {
 	}
 }
 
+func (p *pipeline[I]) RegisterReporter(reportInterval time.Duration, reporter func(r Report)) {
+	p.stats = newStatsTracker(reportInterval, reporter)
+}
+
 func (p *pipeline[I]) Work(ctx context.Context) error {
+	if p.stats != nil {
+		p.stats.start(time.Now())
+		defer func() {
+			p.stats.done()
+		}()
+	}
+
 	defer func() {
 		for _, g := range p.listeningwgs {
 			g.Done()
@@ -108,6 +130,22 @@ func (p *pipeline[I]) Work(ctx context.Context) error {
 
 	if len(p.steps) < 1 {
 		return fmt.Errorf("must register at least one step")
+	}
+
+	// If we are tracking stats, then we need to step up
+	if p.stats != nil {
+		registerfunc := func(ctx context.Context, i I) (I, error) {
+			p.stats.registerNewItem()
+			return i, nil
+		}
+		// Prepend a step to the beginning which will register each item
+		p.steps = append([]func(ctx context.Context, i I) (I, error){registerfunc}, p.steps...)
+
+		// Append a step to the end where the item is completed as long as it's not nil
+		p.steps = append(p.steps, func(ctx context.Context, i I) (I, error) {
+			p.stats.registerItemComplete()
+			return i, nil
+		})
 	}
 
 	// Create the channel that inputs will be passed to
