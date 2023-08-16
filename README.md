@@ -131,3 +131,7 @@ $ go test -v ./pkg/gopipeline
 ## License
 
 `gopipeline` is licensed under the Apache 2.0 License, found in the LICENSE file.
+
+## Special thanks
+
+To [Matt Pollack](https://github.com/mattpollack) and [Kevin Birk](https://github.com/kbirk) for their design and authorship of this project.
